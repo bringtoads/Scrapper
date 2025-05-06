@@ -21,20 +21,24 @@ namespace Scrapper.Services.ScrapperService
             _chapterService = chapterSerivce;
             _unitOfWork = unitOfWOrk;
         }
-
-        public async Task<string> GetPageTitle(string url)
+        #region Novels
+        public Task ScrapeLatestNovels()
         {
-            using var playwright = await Playwright.CreateAsync();
-            var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
-            var page = await browser.NewPageAsync();
-
-            await page.GotoAsync(url);
-            await page.WaitForSelectorAsync("#some-element");
-            var title = await page.TitleAsync();
-
-            await browser.CloseAsync();
-            return title;
+            throw new NotImplementedException();
         }
+
+        public Task ScrapeHotestNovels()
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task ScrapeCompletedNovels()
+        {
+            throw new NotImplementedException();
+        }
+        #endregion
+
+        #region Chapters
         public async Task ScrapeChapterTitleUrl(string chapterTitlesUrl, int novelId)
         {
             using var playwright = await Playwright.CreateAsync();
@@ -98,5 +102,6 @@ namespace Scrapper.Services.ScrapperService
             await browser.CloseAsync();
             return filepath;
         }
+        #endregion
     }
 }
