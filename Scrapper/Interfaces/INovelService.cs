@@ -2,10 +2,11 @@
 
 namespace Scrapper.Interfaces
 {
-    interface INovelService
+    public interface INovelService
     {
-        Task<IEnumerable<Novel>> GetAllNovelDetails();
-        Task ScrapeLatest();
-        Task<String> ScrapeNovelDescription(string sourceUrl); 
+        Task<IEnumerable<Novel>> GetAllNovels();
+        Task GetNovel();
+        Task AddAsync(Novel novel);
+        Task<Novel?> GetBySourceUrlAsync(string source);
     }
 }

@@ -7,9 +7,9 @@ namespace Scrapper.Background
     public class DailyScraperWorker : BackgroundService
     {
         private readonly ILogger<DailyScraperWorker> _logger;
-        private readonly INovelManager _novelManager;
+        private readonly IScraperManager _novelManager;
 
-        public DailyScraperWorker(ILogger<DailyScraperWorker> logger, INovelManager novelManager)
+        public DailyScraperWorker(ILogger<DailyScraperWorker> logger, IScraperManager novelManager)
         {
             _logger = logger;
             _novelManager = novelManager;

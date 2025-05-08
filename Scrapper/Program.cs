@@ -49,15 +49,17 @@ internal class Program
 
                services.AddScoped<IChapterService, ChapterService>();
                services.AddScoped<INovelService, NovelService>();
-               services.AddScoped<IScrapperService, HtmlAgilityScrapperService>();
+               services.AddScoped<IAuthorService, AuthorService>();
+               services.AddScoped<ISavingService, SavingService>();
+               services.AddScoped<HtmlAgilityScrapperService>();
+               services.AddScoped<PlaywrightNovelScraper>();
 
-               services.AddScoped<INovelManager, NovelManager>();
+               services.AddScoped<IScraperManager, ScraperManager>();
            })
            .Build();
 
-        var manager = host.Services.GetRequiredService<INovelManager>();
-        //await manager.StartScrapingAsync();
-        await manager.Start();
+        var manager = host.Services.GetRequiredService<IScraperManager>();
+        await manager.StartScrapingAsync();
 
         await host.RunAsync(); 
 

@@ -1,5 +1,7 @@
+using Scrapper.Data.Entity;
 using Scrapper.Data.Repositories;
 using Scrapper.Interfaces;
+using Scrapper.Repositories;
 
 namespace Scrapper.Services
 {
@@ -7,38 +9,30 @@ namespace Scrapper.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly INovelService _novelService;
-        private string ChapterListNav = "#tab-chapters-title";
-        private readonly IScrapperService _scrapper;
 
-        public ChapterService(IUnitOfWork unitOfWork, INovelService novelService,IScrapperService scrapper)
+        public ChapterService(IUnitOfWork unitOfWork, INovelService novelService)
         {
             _unitOfWork = unitOfWork;
             _novelService = novelService;
-            _scrapper = scrapper;
         }
 
-        //from database scrape all chapter title url 
-        public async Task ScrapeChapterDetailsFromAllNovels()
+        public Task GetAllChapters()
         {
-            var novels = await _novelService.GetAllNovelDetails();
-            if (novels is not null)
-            {
-                foreach (var novel in novels)
-                {
-                    await ScrapeChapterTitleUrl(novel.SourceUrl + ChapterListNav, novel.NovelId);
-                }
-            }
-        }
-      
-        public async Task ScrapeChapterTitleUrl(string chapterTitlesUrl,int novelId)
-        {
-            await _scrapper.ScrapeChapterTitleUrl(chapterTitlesUrl,novelId);
+            throw new NotImplementedException();
         }
 
-        public async Task<string> ScrapeChapterContent(string novelChapterUrl)
+        public async Task<List<Chapter>> GetAllChaptersByNovelAsync(int novelId)
         {
-            return await _scrapper.ScrapeChapterContent(novelChapterUrl);
+            return await _unitOfWork.ChapterRepository.GetChaptersByNovelIdAsync(novelId);
+        }
+        public Task GetChapter(int novelId, int chapterId)
+        {
+            throw new NotImplementedException();
         }
 
+        public Task SaveChapter()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -1,8 +1,10 @@
 ﻿namespace Scrapper.Interfaces
 {
-    interface IScrapperService 
+    public interface IScrapperService 
     {
         #region Novels
+        Task ScrapeAllPages();
+        Task ScrapePage(string url, int page);
         Task ScrapeLatestNovels();
         Task ScrapeHotestNovels();
         Task ScrapeCompletedNovels();

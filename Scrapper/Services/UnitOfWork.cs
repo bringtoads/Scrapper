@@ -26,21 +26,11 @@ namespace Scrapper.Services
             //ScrapeHistoryRepo = scrapeHistoryRepo;
         }
 
-        /// <summary>
-        /// This method starts a new database transaction by calling BeginTransactionAsync() on the DbContext.Database property.
-        ///It stores the IDbContextTransaction object in a private _transaction field to keep track of the active transaction.
-        /// </summary>
-        /// <returns></returns>
         public async Task BeginTransactionAsync()
         {
             _transaction = await _dbContext.Database.BeginTransactionAsync();
         }
 
-        /// <summary>
-        /// This method saves changes to the database via SaveChangesAsync() and commits the transaction.
-        ///If any exception occurs during SaveChangesAsync(), it rolls back the transaction and rethrows the exception to maintain consistency.
-        /// </summary>
-        /// <returns></returns>
         public async Task CommitAsync()
         {
             try
@@ -55,10 +45,6 @@ namespace Scrapper.Services
             }
         }
 
-        /// <summary>
-        /// This method rolls back the transaction if any error occurs or if you want to discard all changes made during the transaction.
-        /// </summary>
-        /// <returns></returns>
         public async Task RollbackAsync()
         {
             if (_transaction is not null)
@@ -67,18 +53,11 @@ namespace Scrapper.Services
             }
         }
 
-        /// <summary>
-        /// This is the standard method to save changes. In this case, it saves changes and can be used outside of a transaction context if you’re not using transactions for a particular operation.
-        /// </summary>
-        /// <returns></returns>
         public async Task<int> CompleteAsync()
         {
             return await _dbContext.SaveChangesAsync();
         }
 
-        /// <summary>
-        /// This is part of the disposable pattern used for cleaning up unmanaged resources or other resources that require explicit cleanup when an object is no longer needed
-        /// </summary>
         public void Dispose()
         {
             _dbContext.Dispose();

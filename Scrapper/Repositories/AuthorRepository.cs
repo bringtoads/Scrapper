@@ -16,12 +16,12 @@ namespace Scrapper.Repositories
 
         public async Task<IEnumerable<Author>> GetAllAsync()
         {
-            return await _context.Set<Author>().ToListAsync();
+            return await _context.Authors.ToListAsync();
         }
 
         public async Task<Author?> GetByIdAsync(int id)
         {
-            return await _context.Set<Author>().FindAsync(id);
+            return await _context.Authors.FindAsync(id);
         }
 
         public async Task<Author?> GetByNameAsync(string name)
@@ -31,22 +31,22 @@ namespace Scrapper.Repositories
         }
         public async Task AddAsync(Author author)
         {
-            await _context.Set<Author>().AddAsync(author);
+            await _context.Authors.AddAsync(author);
             await _context.SaveChangesAsync();
         }
 
         public async Task UpdateAsync(Author author)
         {
-            _context.Set<Author>().Update(author);
+            _context.Authors.Update(author);
             await _context.SaveChangesAsync();
         }
 
         public async Task DeleteAsync(int id)
         {
-            var author = await _context.Set<Author>().FindAsync(id);
+            var author = await _context.Authors.FindAsync(id);
             if (author != null)
             {
-                _context.Set<Author>().Remove(author);
+                _context.Authors.Remove(author);
                 await _context.SaveChangesAsync();
             }
         }

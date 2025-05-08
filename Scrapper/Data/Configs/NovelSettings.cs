@@ -8,5 +8,8 @@ namespace Scrapper.Data.Configs
         public string Completed { get; set; } = null!;
         public string Popular { get; set; } = null!;
         public string NavLatest { get; set; } = null!;
+        public string NavHot { get; set; } = null!;
+        public string NavCompleted { get; set; } = null!;
+        public string NavPopular { get; set; } = null!;
     }
 }
