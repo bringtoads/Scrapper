@@ -21,7 +21,7 @@ namespace Scrapper.Manager
         //todo: refactor saving logic separately 
         public async Task StartScrapingAsync()
         {
-            await _htmlAgilityService.ScrapeAllPages();
+            await _htmlAgilityService.ScrapeAllTitles();
         }
     }
 }
