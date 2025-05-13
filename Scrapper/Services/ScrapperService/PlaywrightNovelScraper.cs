@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 
 namespace Scrapper.Services.ScrapperService
 {
-    internal class PlaywrightNovelScraper : IScrapperService
+    public class PlaywrightNovelScraper : IScrapperService
     {
         private readonly NovelSettings _settings;
         private readonly IUnitOfWork _unitOfWork;
@@ -34,7 +34,7 @@ namespace Scrapper.Services.ScrapperService
             Random rand = new Random();
 
             using var playwright = await Playwright.CreateAsync();
-            await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+            await using var browser = await playwright.Firefox.LaunchAsync(new BrowserTypeLaunchOptions
             {
                 Headless = false // Set to true if you don't need to see the browser
             });

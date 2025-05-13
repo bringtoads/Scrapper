@@ -1,5 +1,6 @@
 using HtmlAgilityPack;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Scrapper.Data.Configs;
 using Scrapper.Data.Entity;
@@ -8,6 +9,7 @@ using Scrapper.Helper;
 using Scrapper.Interfaces;
 using System.Net;
 using System.Text.RegularExpressions;
+using System.Web;
 
 namespace Scrapper.Services.ScrapperService
 {
@@ -18,20 +20,31 @@ namespace Scrapper.Services.ScrapperService
         private readonly IChapterService _chapterService;
         private readonly NovelApiClient _apiClient;
         private readonly IUnitOfWork _unitOfWork;
+        private readonly SeleniumScrapperService _seleniumScrapper;
+        private readonly ILogger<HtmlAgilityScrapperService> _logger;
         private string ChaptersTitle = "#tab-chapters-title";
 
-        public HtmlAgilityScrapperService(IOptions<NovelSettings> options, INovelService novelService, IChapterService chapterSerivce, NovelApiClient apiClient, IUnitOfWork unitOfWork)
+        public HtmlAgilityScrapperService(
+            IOptions<NovelSettings> options,
+            INovelService novelService,
+            IChapterService chapterSerivce,
+            NovelApiClient apiClient,
+            IUnitOfWork unitOfWork,
+            SeleniumScrapperService seleniumScrapper,
+            ILogger<HtmlAgilityScrapperService> logger)
         {
             _settings = options.Value;
             _novelService = novelService;
             _chapterService = chapterSerivce;
             _apiClient = apiClient;
             _unitOfWork = unitOfWork;
+            _seleniumScrapper = seleniumScrapper;
+            _logger = logger;
         }
         public async Task ScrapeAll()
         {
             var urls = new[]
-         {
+            {
                 _settings.Latest,
                 _settings.Hot,
                 _settings.Completed,
@@ -64,28 +77,14 @@ namespace Scrapper.Services.ScrapperService
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
 
-            var lastPageNode = doc.DocumentNode.SelectSingleNode("//li[normalize-space(@class)='last']/a");
-            int maxPage = 0;
-
-            if (lastPageNode is not null)
-            {
-                var lastPageUrl = WebUtility.HtmlDecode(lastPageNode.GetAttributeValue("href", ""));
-                var uri = new Uri(lastPageUrl);
-                var queryParams = QueryHelpers.ParseQuery(uri.Query);
-
-                if (queryParams.TryGetValue("page", out var pageValues) &&
-                    int.TryParse(pageValues.ToString(), out int pageNumber))
-                {
-                    maxPage = pageNumber;
-                }
-            }
+            int maxPage = await _seleniumScrapper.GetLastPage(url);
 
             for (int i = 0; i <= maxPage; i++)
             {
                 await ScrapeRows(i, url);
             }
         }
-
+        
         private async Task ScrapeRows(int pageNum, string url)
         {
             string html = string.Empty;
@@ -164,8 +163,7 @@ namespace Scrapper.Services.ScrapperService
         public async Task ScrapeAllTitles()
         {
             var novels = await _novelService.GetAllNovels();
-            novels.ToList();
-            var filtereed = novels.Where(x => x.NovelId != 1);
+            var filtereed = novels.Skip(10).ToList();
             foreach (var novel in filtereed)
             {
                 await ScrapeChapterTitleUrl(novel.SourceUrl + ChaptersTitle, novel.NovelId);
@@ -177,7 +175,7 @@ namespace Scrapper.Services.ScrapperService
             var html = await _apiClient.Get(chapterTitlesUrl);
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
-
+            File.WriteAllText("scraped.html", html);
             var panelBody = doc.DocumentNode.SelectSingleNode("//div[contains(@class, 'panel-body')]");
             if (panelBody == null) return;
 
@@ -199,7 +197,7 @@ namespace Scrapper.Services.ScrapperService
                         var aTag = li.SelectSingleNode(".//a");
                         if (aTag == null) continue;
                         var chapterUrl = aTag.GetAttributeValue("href", "").Trim();
-                        var (contentFilepath,chapaterTitle) = await ScrapeChapterContent(chapterUrl);
+                        var (contentFilepath, chapaterTitle) = await ScrapeChapterContent(chapterUrl);
 
                         var (chapterNumber, cleanTitle) = ExtractChapterInfo(chapaterTitle);
 
@@ -239,9 +237,10 @@ namespace Scrapper.Services.ScrapperService
 
             if (chrContentDiv is not null)
             {
+                var chapterTitleSpanNode = doc.DocumentNode.SelectSingleNode("//a[@class='chr-title']/span[@class='chr-text']");
                 var chapterTitleH4Tag = chrContentDiv.SelectSingleNode(".//h4");
                 var chapterTitleH3Tag = chrContentDiv.SelectSingleNode(".//h3");
-                string chapterTitle = chapterTitleH4Tag != null ? chapterTitleH4Tag.InnerText.Trim() : (chapterTitleH3Tag != null ? chapterTitleH3Tag.InnerText.Trim() : string.Empty);
+                string chapterTitle = chapterTitleSpanNode != null ? chapterTitleSpanNode.InnerHtml.Trim() : chapterTitleH4Tag != null ? chapterTitleH4Tag.InnerText.Trim() : (chapterTitleH3Tag != null ? chapterTitleH3Tag.InnerText.Trim() : string.Empty);
 
                 // If no <h4>, check the first <p> tag and match the format "Chapter <number>: <some title>"
                 if (string.IsNullOrEmpty(chapterTitle))
@@ -272,7 +271,7 @@ namespace Scrapper.Services.ScrapperService
                 var urlParts = novelChapterUrl.Split('/');
                 string novelName = urlParts[4];      // skill-hunter-kill-monsters-acquire-skills-ascend-to-the-highest-rank
                 string chapterName = urlParts[5];    // 1-dark-place
-        
+
                 // Use your NovelSaver here
                 var filepath = NovelSaver.SaveChapter(novelName, chapterName, content);
                 return (filepath, chapterTitle);
@@ -286,31 +285,6 @@ namespace Scrapper.Services.ScrapperService
 
 
         ///////////////////////////////////////////////////////////////
-
-        public Task ScrapeAllPages()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task ScrapePage(string url, int page)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task ScrapeLatestNovels()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task ScrapeHotestNovels()
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task ScrapeCompletedNovels()
-        {
-            throw new NotImplementedException();
-        }
 
         private async Task SaveNovelAndAuthorAsync(string novelTitle, string authorName, string novelSourceUrl, string description)
         {
@@ -354,14 +328,14 @@ namespace Scrapper.Services.ScrapperService
             if (string.IsNullOrWhiteSpace(fullTitle))
                 return (string.Empty, string.Empty);
 
-            var parts = fullTitle.Split(new[] { ':' }, 2);
+            // Example: "Chapter 1 - 1.The World Ended?" or "Chapter 12: A New Beginning"
+            var regex = new Regex(@"Chapter\s*(\d+)[^\w]*(?:\d*\.)?(.*)", RegexOptions.IgnoreCase);
+            var match = regex.Match(fullTitle);
 
-            if (parts.Length == 2)
+            if (match.Success)
             {
-                var chapterLabel = parts[0].Trim();  // Example: "Chapter 1"
-                var chapterNumber = new string(chapterLabel.Where(char.IsDigit).ToArray());  // Extract digits: "1"
-                var cleanTitle = parts[1].Trim();  // Extract right part: "Immortal Body, Exquisite Nine Orifices Sword Heart"
-
+                var chapterNumber = match.Groups[1].Value.Trim();
+                var cleanTitle = match.Groups[2].Value.Trim();
                 return (chapterNumber, cleanTitle);
             }
 

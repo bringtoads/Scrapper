@@ -52,6 +52,7 @@ internal class Program
                services.AddScoped<IAuthorService, AuthorService>();
                services.AddScoped<ISavingService, SavingService>();
                services.AddScoped<HtmlAgilityScrapperService>();
+               services.AddScoped<SeleniumScrapperService>();
                services.AddScoped<PlaywrightNovelScraper>();
 
                services.AddScoped<IScraperManager, ScraperManager>();

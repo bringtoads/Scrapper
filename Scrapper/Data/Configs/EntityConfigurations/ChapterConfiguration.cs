@@ -38,6 +38,9 @@ namespace Scrapper.Data.Configs.EntityConfigurations
                 .HasMaxLength(500)
                 .HasColumnName("source_url");
 
+            builder.Property(c => c.NovelId)
+                .HasColumnName("novel_id");
+
             builder.HasOne(c => c.Novel)
                 .WithMany(n => n.Chapters)
                 .HasForeignKey(c => c.NovelId)

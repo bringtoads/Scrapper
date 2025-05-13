@@ -2,7 +2,7 @@ using Scrapper.Data.Entity;
 using Scrapper.Data.Repositories;
 using Scrapper.Interfaces;
 
-namespace Scrapper.Services.ScrapperService
+namespace Scrapper.Services
 {
     public class AuthorService : IAuthorService
     {
