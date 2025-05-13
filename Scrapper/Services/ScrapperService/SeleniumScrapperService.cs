@@ -7,6 +7,10 @@ using Scrapper.Helper;
 using Scrapper.Interfaces;
 using System.Web;
 using Microsoft.Extensions.Logging;
+using Scrapper.Data.Entity;
+using System.Text.RegularExpressions;
+using OpenQA.Selenium.Support.UI;
+using Scrapper.Contracts.DTOs;
 
 namespace Scrapper.Services.ScrapperService
 {
@@ -44,7 +48,7 @@ namespace Scrapper.Services.ScrapperService
                 using (var driver = new ChromeDriver())
                 {
                     driver.Navigate().GoToUrl(url);
-                    await Task.Delay(1000); 
+                    await Task.Delay(1000);
 
                     var lastPageLink = driver.FindElement(By.XPath("//li[contains(@class, 'last')]/a"));
                     if (lastPageLink != null)
@@ -57,7 +61,7 @@ namespace Scrapper.Services.ScrapperService
                             return pageNumber;
                         }
                     }
-                    return 0; 
+                    return 0; // Default if no last page found
                 }
             }
             catch (Exception ex)
@@ -66,6 +70,54 @@ namespace Scrapper.Services.ScrapperService
                 return 0;
             }
         }
-    }
 
+
+        public async Task<List<ChpaterTitleDto>?> ScrapeDynamicChapterTitleUrl(string chapterTitlesUrl)
+        {
+            var list = new List<ChpaterTitleDto>();
+            var options = new ChromeOptions();
+            options.AddArguments("--headless"); // Run headless, remove if you need a UI.
+            using var driver = new ChromeDriver(options);
+
+            driver.Navigate().GoToUrl(chapterTitlesUrl);
+            await Task.Delay(2000);
+            // Wait for the panel-body to load (adjust the timeout as needed)
+            var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+            var panelBody = wait.Until(d => d.FindElement(By.XPath("//div[contains(@class, 'panel-body')]")));
+
+            if (panelBody == null) return null;
+
+            // Wait for the row divs to load
+            var rowDivs = wait.Until(d => d.FindElements(By.XPath(".//div[contains(@class, 'row')]")));
+            if (rowDivs == null || rowDivs.Count == 0) return null;
+
+            foreach (var row in rowDivs)
+            {
+                var colDivs = row.FindElements(By.XPath(".//div[contains(@class, 'col-xs-12') and contains(@class, 'col-sm-4') and contains(@class, 'col-md-4')]"));
+                if (colDivs == null || colDivs.Count == 0) continue;
+
+                foreach (var col in colDivs)
+                {
+                    var liNodes = col.FindElements(By.XPath(".//ul[contains(@class, 'list-chapter')]/li"));
+                    if (liNodes == null || liNodes.Count == 0) continue;
+
+                    foreach (var li in liNodes)
+                    {
+                        var aTag = li.FindElement(By.XPath(".//a"));
+                        if (aTag == null) continue;
+
+                        var chapterUrl = aTag.GetAttribute("href").Trim();
+                        var chapter = new ChpaterTitleDto {
+                            Url = chapterUrl,
+                            Title = string.Empty
+                        };
+                        list.Add(chapter);
+                    }
+                }
+            }
+
+            driver.Quit(); // Ensure we properly close the browser session
+            return list;
+        } 
+    }
 }

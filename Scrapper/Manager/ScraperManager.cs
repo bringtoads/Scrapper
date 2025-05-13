@@ -25,7 +25,7 @@ namespace Scrapper.Manager
         //todo: refactor saving logic separately 
         public async Task StartScrapingAsync()
         {
-            await _htmlAgilityService.ScrapeAll();
+            await _htmlAgilityService.ScrapeAllTitles();
             //await _seliniumScrapper.TestScrape("https://novelbin.me/novel-book/blacksmith-of-the-apocalypse");
         }
     }
