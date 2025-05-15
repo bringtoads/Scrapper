@@ -6,6 +6,7 @@ namespace Scrapper.Data.Entity
         public string Title { get; set; } = null!;
         public string? Description { get; set; }
         public string? CoverUrl { get; set; }
+        public byte[]? CoverImage { get; set; }
         public string SourceUrl { get; set; } = null!;
         public string? Status { get; set; } // ongoing, completed, hiatus
         public DateTime CreatedAt { get; set; }

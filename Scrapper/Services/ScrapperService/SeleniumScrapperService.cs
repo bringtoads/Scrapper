@@ -7,8 +7,6 @@ using Scrapper.Helper;
 using Scrapper.Interfaces;
 using System.Web;
 using Microsoft.Extensions.Logging;
-using Scrapper.Data.Entity;
-using System.Text.RegularExpressions;
 using OpenQA.Selenium.Support.UI;
 using Scrapper.Contracts.DTOs;
 

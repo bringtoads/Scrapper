@@ -30,6 +30,9 @@ namespace Scrapper.Data.Configs.EntityConfigurations
                 .HasMaxLength(500)
                 .HasColumnName("cover_url");
 
+            builder.Property(n => n.CoverImage)
+            .HasColumnName("cover_image");
+
             builder.Property(n => n.AuthorId)
             .HasColumnName("author_id");
 

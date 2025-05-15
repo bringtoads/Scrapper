@@ -1,5 +1,4 @@
 using HtmlAgilityPack;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Scrapper.Data.Configs;
@@ -9,7 +8,6 @@ using Scrapper.Helper;
 using Scrapper.Interfaces;
 using System.Net;
 using System.Text.RegularExpressions;
-using System.Web;
 
 namespace Scrapper.Services.ScrapperService
 {
@@ -159,7 +157,6 @@ namespace Scrapper.Services.ScrapperService
             return string.Empty;
         }
 
-        ////////////////////////////////////////////////////
         public async Task ScrapeAllTitles()
         {
             var novels = await _novelService.GetAllNovels();
@@ -190,50 +187,53 @@ namespace Scrapper.Services.ScrapperService
                     await _unitOfWork.ChapterRepository.AddAsync(chapter);
                 }
             }
-         
-            //var html = await _apiClient.Get(chapterTitlesUrl);
-            //var doc = new HtmlDocument();
-            //doc.LoadHtml(html);
-            //File.WriteAllText("scraped.html", html);
-            //var panelBody = doc.DocumentNode.SelectSingleNode("//div[contains(@class, 'panel-body')]");
-            //if (panelBody == null) return;
-
-            //var rowDivs = panelBody.SelectNodes(".//div[contains(@class, 'row')]");
-            //if (rowDivs == null) return;
-
-            //foreach (var row in rowDivs)
-            //{
-            //    var colDivs = row.SelectNodes(".//div[contains(@class, 'col-xs-12') and contains(@class, 'col-sm-4') and contains(@class, 'col-md-4')]");
-            //    if (colDivs == null) continue;
-
-            //    foreach (var col in colDivs)
-            //    {
-            //        var liNodes = col.SelectNodes(".//ul[contains(@class, 'list-chapter')]/li");
-            //        if (liNodes == null) continue;
-
-            //        foreach (var li in liNodes)
-            //        {
-            //            var aTag = li.SelectSingleNode(".//a");
-            //            if (aTag == null) continue;
-            //            var chapterUrl = aTag.GetAttributeValue("href", "").Trim();
-            //            var (contentFilepath, chapaterTitle) = await ScrapeChapterContent(chapterUrl);
-                      
-            //            var (chapterNumber, cleanTitle) = ExtractChapterInfo(chapaterTitle);
-
-            //            var chapter = new Chapter
-            //            {
-            //                Title = cleanTitle,
-            //                ChapterNumber = decimal.Parse(chapterNumber),
-            //                NovelId = novelId,
-            //                FilePath = contentFilepath,
-            //                SourceUrl = chapterUrl
-            //            };
-
-            //            await _unitOfWork.ChapterRepository.AddAsync(chapter);
-            //        }
-            //    }
-            //}
         }
+
+        //public async Task ScrapeChapterTitleUrl(string chapterTitlesUrl, int novelId)
+        //{
+        //    var html = await _apiClient.Get(chapterTitlesUrl);
+        //    var doc = new HtmlDocument();
+        //    doc.LoadHtml(html);
+        //    File.WriteAllText("scraped.html", html);
+        //    var panelBody = doc.DocumentNode.SelectSingleNode("//div[contains(@class, 'panel-body')]");
+        //    if (panelBody == null) return;
+
+        //    var rowDivs = panelBody.SelectNodes(".//div[contains(@class, 'row')]");
+        //    if (rowDivs == null) return;
+
+        //    foreach (var row in rowDivs)
+        //    {
+        //        var colDivs = row.SelectNodes(".//div[contains(@class, 'col-xs-12') and contains(@class, 'col-sm-4') and contains(@class, 'col-md-4')]");
+        //        if (colDivs == null) continue;
+
+        //        foreach (var col in colDivs)
+        //        {
+        //            var liNodes = col.SelectNodes(".//ul[contains(@class, 'list-chapter')]/li");
+        //            if (liNodes == null) continue;
+
+        //            foreach (var li in liNodes)
+        //            {
+        //                var aTag = li.SelectSingleNode(".//a");
+        //                if (aTag == null) continue;
+        //                var chapterUrl = aTag.GetAttributeValue("href", "").Trim();
+        //                var (contentFilepath, chapaterTitle) = await ScrapeChapterContent(chapterUrl);
+
+        //                var (chapterNumber, cleanTitle) = ExtractChapterInfo(chapaterTitle);
+
+        //                var chapter = new Chapter
+        //                {
+        //                    Title = cleanTitle,
+        //                    ChapterNumber = decimal.Parse(chapterNumber),
+        //                    NovelId = novelId,
+        //                    FilePath = contentFilepath,
+        //                    SourceUrl = chapterUrl
+        //                };
+
+        //                await _unitOfWork.ChapterRepository.AddAsync(chapter);
+        //            }
+        //        }
+        //    }
+        //}
 
         public async Task<(string filepath, string chapterTitle)> ScrapeChapterContent(string novelChapterUrl, int retryCount = 0)
         {
@@ -302,9 +302,6 @@ namespace Scrapper.Services.ScrapperService
             }
         }
 
-
-        ///////////////////////////////////////////////////////////////
-
         private async Task SaveNovelAndAuthorAsync(string novelTitle, string authorName, string novelSourceUrl, string description)
         {
             try
@@ -342,6 +339,7 @@ namespace Scrapper.Services.ScrapperService
                 await _unitOfWork.RollbackAsync();
             }
         }
+
         private (string chapterNumber, string cleanTitle) ExtractChapterInfo(string fullTitle)
         {
             if (string.IsNullOrWhiteSpace(fullTitle))
