@@ -25,7 +25,7 @@ namespace Scrapper.Services.ScrapperService
         public HtmlAgilityScrapperService(
             IOptions<NovelSettings> options,
             INovelService novelService,
-            IChapterService chapterSerivce,
+            IChapterService chapterService,
             NovelApiClient apiClient,
             IUnitOfWork unitOfWork,
             SeleniumScrapperService seleniumScrapper,
@@ -33,12 +33,13 @@ namespace Scrapper.Services.ScrapperService
         {
             _settings = options.Value;
             _novelService = novelService;
-            _chapterService = chapterSerivce;
+            _chapterService = chapterService;
             _apiClient = apiClient;
             _unitOfWork = unitOfWork;
             _seleniumScrapper = seleniumScrapper;
             _logger = logger;
         }
+       
         public async Task ScrapeAll()
         {
             var urls = new[]
@@ -82,7 +83,7 @@ namespace Scrapper.Services.ScrapperService
                 await ScrapeRows(i, url);
             }
         }
-        
+
         private async Task ScrapeRows(int pageNum, string url)
         {
             string html = string.Empty;
@@ -124,38 +125,39 @@ namespace Scrapper.Services.ScrapperService
                 var title = WebUtility.HtmlDecode(titleNode.InnerText.Trim());
                 var authorName = WebUtility.HtmlDecode(authorNode.InnerText.Replace("glyphicon-pencil", "").Trim());
                 var sourceUrl = titleNode.GetAttributeValue("href", "");
-                var description = await ScrapeNovelDescription(sourceUrl);
+                var (description, image) = await ScrapeNovelDescriptionAndImage(sourceUrl);
 
-                await SaveNovelAndAuthorAsync(title, authorName, sourceUrl, description);
+                await SaveNovelAndAuthorAsync(title, authorName, sourceUrl, description, image);
             }
         }
 
-        public async Task<String> ScrapeNovelDescription(string sourceUrl, int retryCount = 0)
+
+        public async Task<(string Description, byte[] ImageData)> ScrapeNovelDescriptionAndImage(string sourceUrl, int retryCount = 0)
         {
             const int maxRetries = 5;
 
-            var html = await _apiClient.Get(sourceUrl);
-            var doc = new HtmlDocument();
-            doc.LoadHtml(html);
-
-            var descDiv = doc.DocumentNode.SelectSingleNode("//div[@class='desc-text']");
-            if (descDiv is null && retryCount < maxRetries)
+            try
             {
-                await Task.Delay(2000); // Wait for 2 seconds before retrying
-                return await ScrapeNovelDescription(sourceUrl, retryCount + 1);
-            }
+                // Get the HTML content
+                var html = await _apiClient.Get(sourceUrl);
+                var doc = new HtmlDocument();
+                doc.LoadHtml(html);
 
-            if (descDiv is not null)
+                // Extract description
+                string description = await ExtractDescriptionAsync(doc, sourceUrl, retryCount, maxRetries);
+
+                // Extract and download image
+                byte[] imageData = await ExtractAndDownloadImageAsync(doc, sourceUrl);
+
+                return (description, imageData);
+            }
+            catch (Exception ex)
             {
-                var description = descDiv.InnerHtml;
-                description = Regex.Replace(description, @"\s+", " ");
-
-                // Trim leading and trailing spaces
-                description = description.Trim();
-                return description;
+                Console.WriteLine($"Error scraping novel: {ex.Message}");
+                return (string.Empty, Array.Empty<byte>());
             }
-            return string.Empty;
         }
+
 
         public async Task ScrapeAllTitles()
         {
@@ -188,52 +190,6 @@ namespace Scrapper.Services.ScrapperService
                 }
             }
         }
-
-        //public async Task ScrapeChapterTitleUrl(string chapterTitlesUrl, int novelId)
-        //{
-        //    var html = await _apiClient.Get(chapterTitlesUrl);
-        //    var doc = new HtmlDocument();
-        //    doc.LoadHtml(html);
-        //    File.WriteAllText("scraped.html", html);
-        //    var panelBody = doc.DocumentNode.SelectSingleNode("//div[contains(@class, 'panel-body')]");
-        //    if (panelBody == null) return;
-
-        //    var rowDivs = panelBody.SelectNodes(".//div[contains(@class, 'row')]");
-        //    if (rowDivs == null) return;
-
-        //    foreach (var row in rowDivs)
-        //    {
-        //        var colDivs = row.SelectNodes(".//div[contains(@class, 'col-xs-12') and contains(@class, 'col-sm-4') and contains(@class, 'col-md-4')]");
-        //        if (colDivs == null) continue;
-
-        //        foreach (var col in colDivs)
-        //        {
-        //            var liNodes = col.SelectNodes(".//ul[contains(@class, 'list-chapter')]/li");
-        //            if (liNodes == null) continue;
-
-        //            foreach (var li in liNodes)
-        //            {
-        //                var aTag = li.SelectSingleNode(".//a");
-        //                if (aTag == null) continue;
-        //                var chapterUrl = aTag.GetAttributeValue("href", "").Trim();
-        //                var (contentFilepath, chapaterTitle) = await ScrapeChapterContent(chapterUrl);
-
-        //                var (chapterNumber, cleanTitle) = ExtractChapterInfo(chapaterTitle);
-
-        //                var chapter = new Chapter
-        //                {
-        //                    Title = cleanTitle,
-        //                    ChapterNumber = decimal.Parse(chapterNumber),
-        //                    NovelId = novelId,
-        //                    FilePath = contentFilepath,
-        //                    SourceUrl = chapterUrl
-        //                };
-
-        //                await _unitOfWork.ChapterRepository.AddAsync(chapter);
-        //            }
-        //        }
-        //    }
-        //}
 
         public async Task<(string filepath, string chapterTitle)> ScrapeChapterContent(string novelChapterUrl, int retryCount = 0)
         {
@@ -302,7 +258,7 @@ namespace Scrapper.Services.ScrapperService
             }
         }
 
-        private async Task SaveNovelAndAuthorAsync(string novelTitle, string authorName, string novelSourceUrl, string description)
+        private async Task SaveNovelAndAuthorAsync(string novelTitle, string authorName, string novelSourceUrl, string description, byte[] image)
         {
             try
             {
@@ -324,6 +280,7 @@ namespace Scrapper.Services.ScrapperService
                         Title = novelTitle,
                         SourceUrl = novelSourceUrl,
                         Description = description,
+                        CoverImage = image,
                         AuthorId = author.AuthorId
                     };
 
@@ -358,6 +315,113 @@ namespace Scrapper.Services.ScrapperService
 
             // fallback if format is unexpected
             return (string.Empty, fullTitle.Trim());
+        }
+
+        private async Task<string> ExtractDescriptionAsync(HtmlDocument doc, string sourceUrl, int retryCount, int maxRetries)
+        {
+            var descDiv = doc.DocumentNode.SelectSingleNode("//div[@class='desc-text']");
+
+            // Retry logic for description
+            if (descDiv is null && retryCount < maxRetries)
+            {
+                await Task.Delay(2000);
+                var (description, _) = await ScrapeNovelDescriptionAndImage(sourceUrl, retryCount + 1);
+                return description;
+            }
+
+            if (descDiv is not null)
+            {
+                var description = descDiv.InnerHtml;
+                description = Regex.Replace(description, @"\s+", " ").Trim();
+                return description;
+            }
+
+            return string.Empty;
+        }
+
+        private async Task<byte[]> ExtractAndDownloadImageAsync(HtmlDocument doc, string sourceUrl)
+        {
+            // Try to find the image node using different selectors
+            var imageNode = FindImageNode(doc);
+            if (imageNode == null)
+            {
+                Console.WriteLine("Image node not found using any selector");
+                return Array.Empty<byte>();
+            }
+
+            // Extract image URL from various attributes
+            string imageUrl = ExtractImageUrl(imageNode);
+            if (string.IsNullOrWhiteSpace(imageUrl))
+            {
+                return Array.Empty<byte>();
+            }
+
+            // Ensure URL is absolute
+            imageUrl = EnsureAbsoluteUrl(imageUrl, sourceUrl);
+
+            // Download the image
+            return await DownloadImageAsync(imageUrl);
+        }
+
+        private HtmlNode FindImageNode(HtmlDocument doc)
+        {
+            // Try selectors from most specific to most general
+            var selectors = new[]
+            {
+                "//div[@id='novel']//div[contains(@class, 'col-novel-main')]//div[contains(@class, 'col-info-desc')]//div[contains(@class, 'info-holder')]//div[@class='books']//div[@class='book']//img[@class='lazy']",
+                "//div[@class='books']//div[@class='book']//img[@class='lazy']", "//div[@class='book']/img"
+            };
+
+            foreach (var selector in selectors)
+            {
+                var node = doc.DocumentNode.SelectSingleNode(selector);
+                if (node != null)
+                {
+                    return node;
+                }
+            }
+
+            return null;
+        }
+
+        private string ExtractImageUrl(HtmlNode imageNode)
+        {
+            var attributesToCheck = new[] { "src", "data-src", "data-original" };
+
+            foreach (var attribute in attributesToCheck)
+            {
+                var url = imageNode.GetAttributeValue(attribute, "");
+                if (!string.IsNullOrWhiteSpace(url))
+                {
+                    return url;
+                }
+            }
+
+            return string.Empty;
+        }
+
+        private string EnsureAbsoluteUrl(string imageUrl, string baseUrl)
+        {
+            if (!imageUrl.StartsWith("http"))
+            {
+                Uri baseUri = new Uri(baseUrl);
+                return new Uri(baseUri, imageUrl).ToString();
+            }
+
+            return imageUrl;
+        }
+
+        private async Task<byte[]> DownloadImageAsync(string imageUrl)
+        {
+            try
+            {
+                return await ImageUtility.DownloadImageAsync(imageUrl);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to download image: {ex.Message}");
+                return Array.Empty<byte>();
+            }
         }
     }
 }

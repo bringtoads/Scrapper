@@ -16,7 +16,8 @@ namespace Scrapper.Data.Entity
         public int? AuthorId { get; set; }
         public virtual Author? Author { get; set; } = null!;
         public virtual ICollection<Chapter> Chapters { get; set; } = new List<Chapter>();
-      
+        public ICollection<Genre> Genres { get; set; } = new List<Genre>();
+        public ICollection<Tag> Tags { get; set; } = new List<Tag>();
         public virtual ICollection<ScrapeHistory> ScrapeHistory { get; set; } = new List<ScrapeHistory>();
     }
 }
