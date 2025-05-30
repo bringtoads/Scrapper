@@ -57,6 +57,7 @@ namespace Scrapper.Services.ScrapperService
         public async Task ScarapeList(string url)
         {
             string html = string.Empty;
+
             if (url == _settings.Latest)
             {
                 html = await _apiClient.GetLatest();
@@ -73,6 +74,7 @@ namespace Scrapper.Services.ScrapperService
             {
                 html = await _apiClient.GetPopular();
             }
+
             var doc = new HtmlDocument();
             doc.LoadHtml(html);
 
@@ -130,7 +132,6 @@ namespace Scrapper.Services.ScrapperService
                 await SaveNovelAndAuthorAsync(title, authorName, sourceUrl, description, image);
             }
         }
-
 
         public async Task<(string Description, byte[] ImageData)> ScrapeNovelDescriptionAndImage(string sourceUrl, int retryCount = 0)
         {
